@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Customer Segmentation App</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(to right, #670d10, #092756);
+      color: #fff;
+      margin: 0;
+      padding: 0;
+      text-align: center;
+    }
+
+    h1 {
+      color: #fff;
+      font-size: 3em;
+      margin-top: 1em;
+      margin-bottom: 1em;
+    }
+
+    #upload-form {
+      margin-top: 2em;
+      display: flex;
+      justify-content: center;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 0.5em;
+      font-weight: bold;
+      color: #fff;
+    }
+
+    input[type="file"] {
+      padding: 0.5em;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 1em;
+    }
+
+    button[type="submit"] {
+      padding: 0.8em 1.5em;
+      background-color: #4a77d4;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      font-size: 1em;
+      cursor: pointer;
+      margin-top: 1em;
+    }
+    button[type="submit"]:hover {
+      background-color: #6eb6de;
+    }
+
+    button[type="button"] {
+      padding: 0.8em 1.5em;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      font-size: 1em;
+      cursor: pointer;
+      margin-top: 1em;
+    }
+
+    button[type="button"]:hover {
+      background-color: #81b583;
+    }
+
+    #results{
+      margin-left: 2em;
+      margin-right: 2em;
+    }
+    #spinner {
+      display: none;
+      position: fixed;
+      top: 60%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 9999;
+      
+    }
+
+    .spinner-logo{
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      animation: spin 2s linear infinite;
+    }
+
+    #spinner-text{
+      margin-top: 8px;
+      color: #fff;
+      font-size: 12px;
+      font-weight: bold;
+      font-family: 'Times New Roman', Times, serif;
+    }
+
+    #most-selling-product {
+    margin-top: 20px;
+    color: #fff;
+    text-align: center;
+    font-size: 1.2em;
+    
+    padding: 10px;
+    border-radius: 8px;
+    }
+
+    .table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+    font-size: 1em;
+    font-family: Arial, sans-serif;
+    text-align: left;
+    }
+    .table thead th {
+    background-color: #4CAF50;
+    color: white;
+    padding: 12px 15px;
+    text-align: center;
+    }
+    .table tbody td {
+    padding: 12px 15px;
+    border: 1px solid #ddd;
+    }
+
+
+    #search-container {
+    display: none;
+    margin-top: 20px;
+    text-align: center;
+    }
+
+    #search-input {
+    width: 50%;
+    padding: 10px;
+    font-size: 1em;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    margin-bottom: 20px;
+    }
+
+    #overlay{
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 9998;
+    display: none;
+    backdrop-filter: blur(3px);
+    pointer-events: none;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% {transform: rotate(360deg);}
+    }
+  </style>
+
+<script>
+    function handleSubmit(event){
+      event.preventDefault();
+      var file=document.getElementById("file-upload").files[0];
+      document.getElementById("results").innerHTML ="";
+      if (!file) {
+          document.getElementById("results").innerHTML = 
+          "<p style='color: red;'>Please select a file before submitting.</p>";
+          return;
+      }
+      // Check if the selected file is a CSV
+      var fileName = file.name;
+      var fileExtension = fileName.split('.').pop().toLowerCase();
+
+      // If the file extension is not CSV, show an error
+      if (fileExtension !== "csv") {
+          alert("Please select a valid CSV file.");
+          return;
+      }
+      var formData = new FormData();
+      formData.append("file",file);
+
+      var spinner  = document.getElementById("spinner");
+      var overlay = document.getElementById("overlay");
+      spinner.style.display = "block";
+      overlay.style.display = "block";
+      var xhr = new XMLHttpRequest();
+      xhr.open("POST", "/predict");
+      xhr.send(formData);
+      xhr.onreadystatechange = function() {
+        document.getElementById("results").innerHTML = "";
+      
+        var response = JSON.parse(xhr.responseText);
+        var count0 = response.count_0;
+        var count1 = response.count_1;
+        var count2 = response.count_2;
+
+        var countsDiv = document.createElement("div");
+        countsDiv.innerHTML = `
+          <h3>Cluster 0 (Inactive Customer): ${count0}</h3>
+          <h3>Cluster 1 (New Customer): ${count1}</h3>
+          <h3>Cluster 2 (High Value Customer): ${count2}</h3>
+        `;
+        countsDiv.style.marginTop = "20px";
+        countsDiv.style.marginBottom = "20px";
+        document.getElementById("results").appendChild(countsDiv);
+
+
+        var tableHtml  = document.getElementById("search-container");
+        tableHtml.style.display = "block";
+
+        var amountImg = document.createElement("img");
+        amountImg.src = response.amount_img;
+        amountImg.style.width = "30%";
+        var freqImg = document.createElement("img");
+        freqImg.src = response.freq_img;
+        freqImg.style.width = "30%";
+        var recencyImg = document.createElement("img");
+        recencyImg.src = response.recency_img;
+        recencyImg.style.width = "30%";
+
+
+        spinner.style.display = "none";
+        overlay.style.display = "none";
+
+        var imagesDiv = document.createElement("div");
+        imagesDiv.style.display = "flex";
+        imagesDiv.style.flexWrap = "wrap";
+        imagesDiv.style.marginTop = "20px";
+        imagesDiv.style.marginBottom = "20px";
+        imagesDiv.style.justifyContent = "space-between";
+        imagesDiv.style.alignItems = "center";
+        imagesDiv.style.width = "100%";
+        imagesDiv.appendChild(amountImg);
+        imagesDiv.appendChild(freqImg);
+        imagesDiv.appendChild(recencyImg);
+        document.getElementById("results").appendChild(imagesDiv);
+
+        // Display DataFrame as an HTML table
+        var tableDiv = document.getElementById("results");
+        var tableHTML = response.table_html;
+        tableDiv.innerHTML += `
+          <div style="margin-top: 20px;">
+          <h3>Cluster Data:</h3>
+          ${tableHTML}
+          </div> 
+        `;
+        var downloadLink = document.createElement("a");
+        downloadLink.href = response.csv_file;
+        downloadLink.download = "Clustered_Customers.csv";
+        downloadLink.innerHTML = "<button type='button' style='padding:10px;margin-top:10px;'>Download Results as CSV</button>";
+        document.getElementById("results").appendChild(downloadLink);
+
+        var table = document.querySelector("#results table");
+        var rows = table.getElementsByTagName("tr");
+        var totalRows = rows.length;
+
+        // Loop through all rows
+        for (var i = 1; i < totalRows - 1; i++) {  // Skip header (0) and loop through data rows
+            if (i > 5 && i < totalRows - 5) {
+                rows[i].style.display = "none";  // Hide middle rows
+            }
+        }
+      };
+    }
+
+    function filterTable() {
+      var input = document.getElementById("search-input");
+      var filter = input.value.toUpperCase();
+      var table = document.querySelector("#results table");
+      var rows = table.getElementsByTagName("tr");
+
+      for (var i = 1; i < rows.length; i++) { // Start from 1 to skip the header row
+          var cell = rows[i].getElementsByTagName("td")[0]; // Assuming CustomerID is in the first column
+          if (cell) {
+              var textValue = cell.textContent || cell.innerText;
+              rows[i].style.display = textValue.toUpperCase().indexOf(filter) > -1 ? "" : "none";
+          }
+      }
+    }
+
+    function getMostSellingProduct() {
+    var file = document.getElementById("file-upload").files[0];
+    if (!file) {
+      document.getElementById("results").innerHTML = 
+      "<p style='color: red;'>Please select a file before submitting.</p>";
+      // alert("Please upload a file first!");
+      return;
+    }
+      // Check if the selected file is a CSV
+      var fileName = file.name;
+      var fileExtension = fileName.split('.').pop().toLowerCase();
+
+      // If the file extension is not CSV, show an error
+      if (fileExtension !== "csv") {
+        alert("Please select a valid CSV file.");
+        return;
+      }
+
+    var formData = new FormData();
+    formData.append("file", file);
+
+    var spinner = document.getElementById("spinner");
+    spinner.style.display = "block";
+    overlay.style.display = "block";
+
+    var xhr = new XMLHttpRequest();
+    xhr.open("POST", "/most_selling_product");
+    xhr.send(formData);
+
+    xhr.onreadystatechange = function () {
+        if (xhr.readyState === 4 && xhr.status === 200) {
+          var response = JSON.parse(xhr.responseText);
+          var productName = response.product_name;
+          var quantitySold = response.quantity_sold;
+
+          var lproductName = response.lproduct_name;
+          var lquantitySold = response.lquantity_sold;
+            
+          spinner.style.display = "none";
+          overlay.style.display = "none";
+
+          var resultDiv = document.getElementById("most-selling-product");
+          resultDiv.innerHTML = `
+                <h3>Most Selling Product:</h3>
+                <p><strong>${productName}</strong> with <strong>${quantitySold}</strong> units sold.</p>
+                <h3>Least Selling Product:</h3>
+                <p><strong>${lproductName}</strong> with <strong>${lquantitySold}</strong> units sold.</p>
+            `;
+          resultDiv.style.marginTop = "20px";
+        }
+    };
+}
+</script>
+    
+</head>
+<body>
+    <h1>Customer Segmentation App</h1>
+    <h2>Final Year Project</h2>
+    <h3>Developed by Hassan Zaman and Jhangir Mughal</h3>
+    <form id="upload-form" onsubmit="handleSubmit(event)">
+        <label for="file-upload">Upload CSV File:</label>
+        <input type="file" id="file-upload">
+        <button type="submit">Submit</button>
+        <button type="button" onclick="getMostSellingProduct()">Product Analysis</button>
+    </form>
+  
+<div id="spinner" class="spinner">
+  <img src="static/logoUOH.jpeg" alt="loading..." class="spinner-logo">
+  <p id="spinner-text">Processing...</p>
+</div>
+
+<div id="most-selling-product"></div>
+<div id="search-container">
+  <input type="text" id="search-input" placeholder="Search Customer by ID..." onkeyup="filterTable()">
+</div>
+
+<div id="results"></div>
+<div id="overlay"></div>
+</body>
+</html>
